@@ -1,25 +1,84 @@
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
+import os
+import requests
+import logging
+import time
 
 
 class FinancialSituationMemory:
     def __init__(self, name, config):
-        if config["backend_url"] == "http://localhost:11434/v1":
-            self.embedding = "nomic-embed-text"
+        self.config = config
+        self.provider = config.get("llm_provider", "openai").lower()
+
+        if self.provider == "google":
+            self.google_api_key = os.getenv("GOOGLE_API_KEY")
+            if not self.google_api_key:
+                raise ValueError("GOOGLE_API_KEY environment variable not set for Google provider.")
+            self.embedding_model = "embedding-001"
         else:
-            self.embedding = "text-embedding-3-small"
-        self.client = OpenAI(base_url=config["backend_url"])
+            # Default to OpenAI-compatible setup
+            if config.get("backend_url") == "http://localhost:11434/v1":
+                self.embedding_model = "nomic-embed-text"
+            else:
+                self.embedding_model = "text-embedding-3-small"
+            self.openai_client = OpenAI(base_url=config["backend_url"])
+
         self.chroma_client = chromadb.Client(Settings(allow_reset=True))
         self.situation_collection = self.chroma_client.create_collection(name=name)
 
-    def get_embedding(self, text):
-        """Get OpenAI embedding for a text"""
-        
-        response = self.client.embeddings.create(
-            model=self.embedding, input=text
+    def _get_openai_embedding(self, text):
+        """Get OpenAI-compatible embedding for a text."""
+        response = self.openai_client.embeddings.create(
+            model=self.embedding_model, input=text
         )
         return response.data[0].embedding
+
+    def _get_google_embedding(self, text):
+        """Get Google embedding for a text."""
+        url = f"https://pslscrosyutd.ap-northeast-1.clawcloudrun.com/v1beta/models/{self.embedding_model}:embedContent?key={self.google_api_key}"
+
+        headers = {"Content-Type": "application/json"}
+        payload = {"content": {"parts": [{"text": text}]}}
+        
+        logging.debug(f"Google Embedding Request URL: {url}")
+        logging.debug(f"Google Embedding Request Headers: {headers}")
+        logging.debug(f"Google Embedding Request Payload: {payload}")
+
+        max_retries = 5
+        base_delay = 1  # seconds
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=180)
+                logging.debug(f"Google Embedding Response Status Code: {response.status_code}")
+                logging.debug(f"Google Embedding Response Body: {response.text}")
+                response.raise_for_status()
+                data = response.json()
+                return data["embedding"]["values"]
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"Attempt {attempt + 1} of {max_retries} failed with connection error: {e}")
+                if attempt + 1 == max_retries:
+                    logging.error(f"Final attempt failed. Error calling Google Embedding API: {e}")
+                    raise
+            except (KeyError, requests.exceptions.HTTPError) as e:
+                logging.warning(f"Attempt {attempt + 1} of {max_retries} failed with HTTP/parsing error: {e}")
+                if attempt + 1 == max_retries:
+                    logging.error(f"Final attempt failed. Error processing Google Embedding API response: {response.text}")
+                    raise
+            
+            # Incremental backoff
+            delay = base_delay * (attempt + 1)
+            logging.info(f"Retrying in {delay} seconds...")
+            time.sleep(delay)
+
+    def get_embedding(self, text):
+        """Get embedding for a text based on the configured provider."""
+        logging.info(f"Getting embedding for text using {self.provider} provider.")
+        if self.provider == "google":
+            return self._get_google_embedding(text)
+        else:
+            return self._get_openai_embedding(text)
 
     def add_situations(self, situations_and_advice):
         """Add financial situations and their corresponding advice. Parameter is a list of tuples (situation, rec)"""

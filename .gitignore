@@ -1,9 +1,35 @@
-env/
+# Python cache
 __pycache__/
-.DS_Store
-*.csv
-src/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs & Results
+*.log
+results/
 eval_results/
 eval_data/
-*.egg-info/
-.env
+
+# Data files
+*.csv
+*.json
+*.jsonl
+data/
+dataflows/data_cache/
+
+# Local test files
+test_reddit.py
+test_reddit_inside.py

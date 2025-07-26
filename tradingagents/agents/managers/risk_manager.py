@@ -1,5 +1,6 @@
 import time
 import json
+from langchain_core.messages import HumanMessage
 
 
 def create_risk_manager(llm, memory):
@@ -43,7 +44,7 @@ Deliverables:
 
 Focus on actionable insights and continuous improvement. Build on past lessons, critically evaluate all perspectives, and ensure each decision advances better outcomes."""
 
-        response = llm.invoke(prompt)
+        response = llm.invoke([HumanMessage(content=prompt)])
 
         new_risk_debate_state = {
             "judge_decision": response.content,

@@ -25,6 +25,9 @@ class StockstatsUtils:
             "whether to use online tools to fetch data or offline tools. If True, will use online tools.",
         ] = False,
     ):
+        # Normalize indicator to lower case to handle case-sensitivity issues
+        indicator = indicator.lower()
+        
         df = None
         data = None
 

@@ -6,6 +6,7 @@ from langchain_core.messages import RemoveMessage
 from langchain_core.tools import tool
 from datetime import date, timedelta, datetime
 import functools
+import logging
 import pandas as pd
 import os
 from dateutil.relativedelta import relativedelta
@@ -60,7 +61,7 @@ class Toolkit:
         Returns:
             str: A formatted dataframe containing the latest global news from Reddit in the specified time frame.
         """
-        
+        logging.info(f"Calling get_reddit_news tool for date: {curr_date}")
         global_news_result = interface.get_reddit_global_news(curr_date, 7, 5)
 
         return global_news_result
@@ -91,6 +92,7 @@ class Toolkit:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         look_back_days = (end_date - start_date).days
 
+        logging.info(f"Calling get_finnhub_news tool for {ticker} from {start_date} to {end_date}")
         finnhub_news_result = interface.get_finnhub_news(
             ticker, end_date_str, look_back_days
         )
@@ -99,7 +101,31 @@ class Toolkit:
 
     @staticmethod
     @tool
-    def get_reddit_stock_info(
+    def get_finnhub_news_online(
+        ticker: Annotated[
+            str,
+            "Search query of a company, e.g. 'AAPL, TSM, etc.",
+        ],
+        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        look_back_days: Annotated[int, "how many days to look back"] = 7,
+    ):
+        """
+        Retrieve the latest news about a given stock from Finnhub within a date range using the online API.
+        Args:
+            ticker (str): Ticker of a company. e.g. AAPL, TSM
+            curr_date (str): Current date in yyyy-mm-dd format
+            look_back_days (int): How many days to look back, default is 7
+        Returns:
+            str: A formatted string containing news about the company within the date range.
+        """
+        logging.info(f"Calling get_finnhub_news_online tool for {ticker} on {curr_date}")
+        return interface.get_finnhub_news_online_interface(
+            ticker, curr_date, look_back_days
+        )
+
+    @staticmethod
+    @tool
+    def get_reddit_stock_info_offline(
         ticker: Annotated[
             str,
             "Ticker of a company. e.g. AAPL, TSM",
@@ -107,7 +133,7 @@ class Toolkit:
         curr_date: Annotated[str, "Current date you want to get news for"],
     ) -> str:
         """
-        Retrieve the latest news about a given stock from Reddit, given the current date.
+        Retrieve the latest news about a given stock from offline Reddit data, given the current date.
         Args:
             ticker (str): Ticker of a company. e.g. AAPL, TSM
             curr_date (str): current date in yyyy-mm-dd format to get news for
@@ -115,7 +141,31 @@ class Toolkit:
             str: A formatted dataframe containing the latest news about the company on the given date
         """
 
-        stock_news_results = interface.get_reddit_company_news(ticker, curr_date, 7, 5)
+        logging.info(f"Calling get_reddit_stock_info_offline tool for {ticker} on {curr_date}")
+        stock_news_results = interface.get_reddit_stock_info_offline(ticker, curr_date, 7, 5)
+
+        return stock_news_results
+
+    @staticmethod
+    @tool
+    def get_reddit_stock_info_online(
+        ticker: Annotated[
+            str,
+            "Ticker of a company. e.g. AAPL, TSM",
+        ],
+        look_back_days: Annotated[int, "How many days back to search for posts."] = 7,
+    ) -> str:
+        """
+        Retrieve recent news about a given stock from online Reddit posts.
+        Args:
+            ticker (str): Ticker of a company. e.g. AAPL, TSM
+            look_back_days (int): How many days back to search for posts.
+        Returns:
+            str: A formatted string containing recent posts about the company.
+        """
+
+        logging.info(f"Calling get_reddit_stock_info_online tool for {ticker}")
+        stock_news_results = interface.get_reddit_stock_info_online(ticker, look_back_days)
 
         return stock_news_results
 
@@ -136,6 +186,7 @@ class Toolkit:
             str: A formatted dataframe containing the stock price data for the specified ticker symbol in the specified date range.
         """
 
+        logging.info(f"Calling get_YFin_data tool for {symbol} from {start_date} to {end_date}")
         result_data = interface.get_YFin_data(symbol, start_date, end_date)
 
         return result_data
@@ -157,6 +208,7 @@ class Toolkit:
             str: A formatted dataframe containing the stock price data for the specified ticker symbol in the specified date range.
         """
 
+        logging.info(f"Calling get_YFin_data_online tool for {symbol} from {start_date} to {end_date}")
         result_data = interface.get_YFin_data_online(symbol, start_date, end_date)
 
         return result_data
@@ -184,6 +236,7 @@ class Toolkit:
             str: A formatted dataframe containing the stock stats indicators for the specified ticker symbol and indicator.
         """
 
+        logging.info(f"Calling get_stockstats_indicators_report tool for {symbol} with indicator {indicator}")
         result_stockstats = interface.get_stock_stats_indicators_window(
             symbol, indicator, curr_date, look_back_days, False
         )
@@ -213,6 +266,7 @@ class Toolkit:
             str: A formatted dataframe containing the stock stats indicators for the specified ticker symbol and indicator.
         """
 
+        logging.info(f"Calling get_stockstats_indicators_report_online tool for {symbol} with indicator {indicator}")
         result_stockstats = interface.get_stock_stats_indicators_window(
             symbol, indicator, curr_date, look_back_days, True
         )
@@ -237,6 +291,7 @@ class Toolkit:
             str: a report of the sentiment in the past 30 days starting at curr_date
         """
 
+        logging.info(f"Calling get_finnhub_company_insider_sentiment tool for {ticker} on {curr_date}")
         data_sentiment = interface.get_finnhub_company_insider_sentiment(
             ticker, curr_date, 30
         )
@@ -261,6 +316,7 @@ class Toolkit:
             str: a report of the company's insider transactions/trading information in the past 30 days
         """
 
+        logging.info(f"Calling get_finnhub_company_insider_transactions tool for {ticker} on {curr_date}")
         data_trans = interface.get_finnhub_company_insider_transactions(
             ticker, curr_date, 30
         )
@@ -269,7 +325,7 @@ class Toolkit:
 
     @staticmethod
     @tool
-    def get_simfin_balance_sheet(
+    def get_simfin_balance_sheet_offline(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,
@@ -278,7 +334,7 @@ class Toolkit:
         curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
     ):
         """
-        Retrieve the most recent balance sheet of a company
+        Retrieve the most recent balance sheet of a company from offline data.
         Args:
             ticker (str): ticker symbol of the company
             freq (str): reporting frequency of the company's financial history: annual / quarterly
@@ -287,13 +343,37 @@ class Toolkit:
             str: a report of the company's most recent balance sheet
         """
 
-        data_balance_sheet = interface.get_simfin_balance_sheet(ticker, freq, curr_date)
+        logging.info(f"Calling get_simfin_balance_sheet_offline tool for {ticker}")
+        data_balance_sheet = interface.get_simfin_balance_sheet_offline(ticker, freq, curr_date)
 
         return data_balance_sheet
 
     @staticmethod
     @tool
-    def get_simfin_cashflow(
+    def get_balance_sheet_online(
+        ticker: Annotated[str, "ticker symbol"],
+        freq: Annotated[
+            str,
+            "reporting frequency: 'annual' or 'quarterly'",
+        ],
+    ):
+        """
+        Retrieve the most recent balance sheet of a company from online sources.
+        Args:
+            ticker (str): ticker symbol of the company
+            freq (str): reporting frequency: 'annual' or 'quarterly'
+        Returns:
+            str: a report of the company's most recent balance sheet
+        """
+
+        logging.info(f"Calling get_balance_sheet_online tool for {ticker}")
+        data_balance_sheet = interface.get_balance_sheet_online(ticker, freq)
+
+        return data_balance_sheet
+
+    @staticmethod
+    @tool
+    def get_simfin_cashflow_offline(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,
@@ -302,7 +382,7 @@ class Toolkit:
         curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
     ):
         """
-        Retrieve the most recent cash flow statement of a company
+        Retrieve the most recent cash flow statement of a company from offline data.
         Args:
             ticker (str): ticker symbol of the company
             freq (str): reporting frequency of the company's financial history: annual / quarterly
@@ -311,13 +391,37 @@ class Toolkit:
                 str: a report of the company's most recent cash flow statement
         """
 
-        data_cashflow = interface.get_simfin_cashflow(ticker, freq, curr_date)
+        logging.info(f"Calling get_simfin_cashflow_offline tool for {ticker}")
+        data_cashflow = interface.get_simfin_cashflow_offline(ticker, freq, curr_date)
 
         return data_cashflow
 
     @staticmethod
     @tool
-    def get_simfin_income_stmt(
+    def get_cashflow_online(
+        ticker: Annotated[str, "ticker symbol"],
+        freq: Annotated[
+            str,
+            "reporting frequency: 'annual' or 'quarterly'",
+        ],
+    ):
+        """
+        Retrieve the most recent cash flow statement of a company from online sources.
+        Args:
+            ticker (str): ticker symbol of the company
+            freq (str): reporting frequency: 'annual' or 'quarterly'
+        Returns:
+                str: a report of the company's most recent cash flow statement
+        """
+
+        logging.info(f"Calling get_cashflow_online tool for {ticker}")
+        data_cashflow = interface.get_cashflow_online(ticker, freq)
+
+        return data_cashflow
+
+    @staticmethod
+    @tool
+    def get_simfin_income_stmt_offline(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,
@@ -326,7 +430,7 @@ class Toolkit:
         curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
     ):
         """
-        Retrieve the most recent income statement of a company
+        Retrieve the most recent income statement of a company from offline data.
         Args:
             ticker (str): ticker symbol of the company
             freq (str): reporting frequency of the company's financial history: annual / quarterly
@@ -335,8 +439,34 @@ class Toolkit:
                 str: a report of the company's most recent income statement
         """
 
-        data_income_stmt = interface.get_simfin_income_statements(
+        logging.info(f"Calling get_simfin_income_stmt_offline tool for {ticker}")
+        data_income_stmt = interface.get_simfin_income_stmt_offline(
             ticker, freq, curr_date
+        )
+
+        return data_income_stmt
+
+    @staticmethod
+    @tool
+    def get_income_statement_online(
+        ticker: Annotated[str, "ticker symbol"],
+        freq: Annotated[
+            str,
+            "reporting frequency: 'annual' or 'quarterly'",
+        ],
+    ):
+        """
+        Retrieve the most recent income statement of a company from online sources.
+        Args:
+            ticker (str): ticker symbol of the company
+            freq (str): reporting frequency: 'annual' or 'quarterly'
+        Returns:
+                str: a report of the company's most recent income statement
+        """
+
+        logging.info(f"Calling get_income_statement_online tool for {ticker}")
+        data_income_stmt = interface.get_income_statement_online(
+            ticker, freq
         )
 
         return data_income_stmt
@@ -357,6 +487,7 @@ class Toolkit:
             str: A formatted string containing the latest news from Google News based on the query and date range.
         """
 
+        logging.info(f"Calling get_google_news tool with query: {query}")
         google_news_results = interface.get_google_news(query, curr_date, 7)
 
         return google_news_results
@@ -376,6 +507,7 @@ class Toolkit:
             str: A formatted string containing the latest news about the company on the given date.
         """
 
+        logging.info(f"Calling get_stock_news_openai tool for {ticker}")
         openai_news_results = interface.get_stock_news_openai(ticker, curr_date)
 
         return openai_news_results
@@ -393,6 +525,7 @@ class Toolkit:
             str: A formatted string containing the latest macroeconomic news on the given date.
         """
 
+        logging.info(f"Calling get_global_news_openai tool for date: {curr_date}")
         openai_news_results = interface.get_global_news_openai(curr_date)
 
         return openai_news_results
@@ -412,6 +545,7 @@ class Toolkit:
             str: A formatted string containing the latest fundamental information about the company on the given date.
         """
 
+        logging.info(f"Calling get_fundamentals_openai tool for {ticker}")
         openai_fundamentals_results = interface.get_fundamentals_openai(
             ticker, curr_date
         )

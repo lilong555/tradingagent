@@ -1,6 +1,7 @@
 # TradingAgents/graph/trading_graph.py
 
 import os
+import logging
 from pathlib import Path
 import json
 from datetime import date
@@ -8,7 +9,6 @@ from typing import Dict, Any, Tuple, List, Optional
 
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langgraph.prebuilt import ToolNode
 
@@ -48,6 +48,9 @@ class TradingAgentsGraph:
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
 
+        # Setup logging
+        self._setup_logging()
+
         # Update the interface's config
         set_config(self.config)
 
@@ -65,8 +68,10 @@ class TradingAgentsGraph:
             self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
         elif self.config["llm_provider"].lower() == "google":
-            self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
-            self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
+            from tradingagents.agents.utils.custom_llm_clients import CustomGoogleGenAIClient
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            self.deep_thinking_llm = CustomGoogleGenAIClient(model=self.config["deep_think_llm"], api_key=google_api_key)
+            self.quick_thinking_llm = CustomGoogleGenAIClient(model=self.config["quick_think_llm"], api_key=google_api_key)
         else:
             raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
         
@@ -79,8 +84,8 @@ class TradingAgentsGraph:
         self.invest_judge_memory = FinancialSituationMemory("invest_judge_memory", self.config)
         self.risk_manager_memory = FinancialSituationMemory("risk_manager_memory", self.config)
 
-        # Create tool nodes
-        self.tool_nodes = self._create_tool_nodes()
+        # Create tool nodes and store the raw tool lists
+        self.analyst_tools, self.tool_nodes = self._create_tool_nodes()
 
         # Initialize components
         self.conditional_logic = ConditionalLogic()
@@ -88,6 +93,7 @@ class TradingAgentsGraph:
             self.quick_thinking_llm,
             self.deep_thinking_llm,
             self.toolkit,
+            self.analyst_tools,  # Pass the raw tool lists
             self.tool_nodes,
             self.bull_memory,
             self.bear_memory,
@@ -108,55 +114,78 @@ class TradingAgentsGraph:
 
         # Set up the graph
         self.graph = self.graph_setup.setup_graph(selected_analysts)
+        
+        logging.info("TradingAgentsGraph initialized successfully.")
 
-    def _create_tool_nodes(self) -> Dict[str, ToolNode]:
-        """Create tool nodes for different data sources."""
-        return {
-            "market": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_YFin_data_online,
-                    self.toolkit.get_stockstats_indicators_report_online,
-                    # offline tools
-                    self.toolkit.get_YFin_data,
-                    self.toolkit.get_stockstats_indicators_report,
-                ]
-            ),
-            "social": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_stock_news_openai,
-                    # offline tools
-                    self.toolkit.get_reddit_stock_info,
-                ]
-            ),
-            "news": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_global_news_openai,
-                    self.toolkit.get_google_news,
-                    # offline tools
-                    self.toolkit.get_finnhub_news,
-                    self.toolkit.get_reddit_news,
-                ]
-            ),
-            "fundamentals": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_fundamentals_openai,
-                    # offline tools
-                    self.toolkit.get_finnhub_company_insider_sentiment,
-                    self.toolkit.get_finnhub_company_insider_transactions,
-                    self.toolkit.get_simfin_balance_sheet,
-                    self.toolkit.get_simfin_cashflow,
-                    self.toolkit.get_simfin_income_stmt,
-                ]
-            ),
+    def _setup_logging(self):
+        """Configure the logging for the application."""
+        log_dir = Path(self.config.get("results_dir", "results"))
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "trading_agents.log"
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler() # Also log to console
+            ]
+        )
+
+    def _create_tool_nodes(self) -> Tuple[Dict[str, list], Dict[str, ToolNode]]:
+        """Create tool lists and tool nodes for different data sources, aware of the LLM provider."""
+        is_google_provider = self.config.get("llm_provider", "").lower() == "google"
+
+        # Define base tools available for all providers
+        analyst_tools = {
+            "market": [
+                self.toolkit.get_YFin_data_online,
+                self.toolkit.get_stockstats_indicators_report_online,
+                self.toolkit.get_YFin_data,
+                self.toolkit.get_stockstats_indicators_report,
+            ],
+            "social": [
+                self.toolkit.get_reddit_stock_info_online,
+                self.toolkit.get_reddit_stock_info_offline,
+            ],
+            "news": [
+                self.toolkit.get_finnhub_news_online,
+                self.toolkit.get_google_news,
+                self.toolkit.get_finnhub_news,
+                self.toolkit.get_reddit_news,
+            ],
+            "fundamentals": [
+                self.toolkit.get_income_statement_online,
+                self.toolkit.get_balance_sheet_online,
+                self.toolkit.get_cashflow_online,
+                self.toolkit.get_finnhub_company_insider_sentiment,
+                self.toolkit.get_finnhub_company_insider_transactions,
+                self.toolkit.get_simfin_balance_sheet_offline,
+                self.toolkit.get_simfin_cashflow_offline,
+                self.toolkit.get_simfin_income_stmt_offline,
+            ],
         }
+
+        # Add provider-specific tools
+        if not is_google_provider:
+            # These tools rely on OpenAI-compatible function calling for web search
+            analyst_tools["social"].insert(0, self.toolkit.get_stock_news_openai)
+            analyst_tools["news"].insert(1, self.toolkit.get_global_news_openai)
+            analyst_tools["fundamentals"].insert(0, self.toolkit.get_fundamentals_openai)
+
+        # Create ToolNode objects from the lists
+        tool_nodes = {
+            "market": ToolNode(analyst_tools["market"]),
+            "social": ToolNode(analyst_tools["social"]),
+            "news": ToolNode(analyst_tools["news"]),
+            "fundamentals": ToolNode(analyst_tools["fundamentals"]),
+        }
+
+        return analyst_tools, tool_nodes
 
     def propagate(self, company_name, trade_date):
         """Run the trading agents graph for a company on a specific date."""
-
+        logging.info(f"Starting propagation for {company_name} on {trade_date}.")
         self.ticker = company_name
 
         # Initialize state
@@ -187,7 +216,9 @@ class TradingAgentsGraph:
         self._log_state(trade_date, final_state)
 
         # Return decision and processed signal
-        return final_state, self.process_signal(final_state["final_trade_decision"])
+        decision = self.process_signal(final_state["final_trade_decision"])
+        logging.info(f"Propagation finished for {company_name}. Final decision: {decision}")
+        return final_state, decision
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""

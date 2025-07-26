@@ -1,5 +1,6 @@
 import time
 import json
+from langchain_core.messages import HumanMessage
 
 
 def create_research_manager(llm, memory):
@@ -23,11 +24,14 @@ def create_research_manager(llm, memory):
 
 Summarize the key points from both sides concisely, focusing on the most compelling evidence or reasoning. Your recommendation—Buy, Sell, or Hold—must be clear and actionable. Avoid defaulting to Hold simply because both sides have valid points; commit to a stance grounded in the debate's strongest arguments.
 
-Additionally, develop a detailed investment plan for the trader. This should include:
+Additionally, develop a detailed investment plan for the trader. This plan **must** include:
 
-Your Recommendation: A decisive stance supported by the most convincing arguments.
-Rationale: An explanation of why these arguments lead to your conclusion.
-Strategic Actions: Concrete steps for implementing the recommendation.
+*   **Your Recommendation:** A decisive stance (Buy, Sell, or Hold) supported by the most convincing arguments.
+*   **Rationale:** A concise explanation of why these arguments lead to your conclusion.
+*   **Strategic Actions & Price Levels:** Concrete steps for implementing the recommendation, including:
+    *   **Entry Price:** A specific price or range to enter the trade.
+    *   **Target Price:** A price at which to take profits.
+    *   **Stop-Loss Price:** A price to exit the trade to limit losses.
 Take into account your past mistakes on similar situations. Use these insights to refine your decision-making and ensure you are learning and improving. Present your analysis conversationally, as if speaking naturally, without special formatting. 
 
 Here are your past reflections on mistakes:
@@ -36,7 +40,7 @@ Here are your past reflections on mistakes:
 Here is the debate:
 Debate History:
 {history}"""
-        response = llm.invoke(prompt)
+        response = llm.invoke([HumanMessage(content=prompt)])
 
         new_investment_debate_state = {
             "judge_decision": response.content,

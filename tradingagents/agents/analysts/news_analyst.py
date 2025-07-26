@@ -1,25 +1,23 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
+from tradingagents.agents.utils.custom_llm_clients import CustomGoogleGenAIClient
 
 
-def create_news_analyst(llm, toolkit):
+def create_news_analyst(llm, tools):
     def news_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
 
-        if toolkit.config["online_tools"]:
-            tools = [toolkit.get_global_news_openai, toolkit.get_google_news]
-        else:
-            tools = [
-                toolkit.get_finnhub_news,
-                toolkit.get_reddit_news,
-                toolkit.get_google_news,
-            ]
-
         system_message = (
-            "You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Look at news from EODHD, and finnhub to be comprehensive. Do not simply state the trends are mixed, provide detailed and finegrained analysis and insights that may help traders make decisions."
-            + """ Make sure to append a Makrdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            """**Your primary task is to use the tools provided to you to gather news and analyze recent trends.** Your goal is to produce a report based on your findings.
+
+You are a News Analyst. Your objective is to analyze recent news for a given company ticker and assess its relevance to trading and the broader macroeconomic environment.
+- Immediately use the tools you have access to for gathering news. Do not ask for clarification.
+- The ticker can be a stock (e.g., 'AAPL') or an ETF (e.g., 'SPY').
+- After gathering the data, write a comprehensive report detailing your analysis of the news, its sentiment, and potential implications.
+- Provide detailed and fine-grained insights that may help traders make decisions. Do not simply state that trends are "mixed."
+- At the end of your report, include a Markdown table to summarize the key points for easy reading."""
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -44,8 +42,17 @@ def create_news_analyst(llm, toolkit):
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
 
-        chain = prompt | llm.bind_tools(tools)
-        result = chain.invoke(state["messages"])
+        if isinstance(llm, CustomGoogleGenAIClient):
+            # Custom client doesn't support LCEL pipe, so we invoke manually
+            llm.bind_tools(tools)
+            # The custom client now expects a list of messages.
+            # We construct this list from the prompt template and the current state.
+            messages = prompt.invoke(state).to_messages()
+            result = llm.invoke(messages)
+        else:
+            # Standard LangChain client
+            chain = prompt | llm.bind_tools(tools)
+            result = chain.invoke(state["messages"])
 
         report = ""
 

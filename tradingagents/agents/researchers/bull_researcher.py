@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 import time
 import json
 
@@ -41,8 +41,8 @@ Last bear argument: {current_response}
 Reflections from similar situations and lessons learned: {past_memory_str}
 Use this information to deliver a compelling bull argument, refute the bear's concerns, and engage in a dynamic debate that demonstrates the strengths of the bull position. You must also address reflections and learn from lessons and mistakes you made in the past.
 """
-
-        response = llm.invoke(prompt)
+        # Ensure the prompt is passed as a list of HumanMessage objects
+        response = llm.invoke([HumanMessage(content=prompt)])
 
         argument = f"Bull Analyst: {response.content}"
 

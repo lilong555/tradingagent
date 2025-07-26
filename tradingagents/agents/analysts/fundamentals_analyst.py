@@ -1,28 +1,35 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
+from tradingagents.agents.utils.custom_llm_clients import CustomGoogleGenAIClient
 
 
-def create_fundamentals_analyst(llm, toolkit):
+def create_fundamentals_analyst(llm, tools):
     def fundamentals_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
         company_name = state["company_of_interest"]
 
-        if toolkit.config["online_tools"]:
-            tools = [toolkit.get_fundamentals_openai]
-        else:
-            tools = [
-                toolkit.get_finnhub_company_insider_sentiment,
-                toolkit.get_finnhub_company_insider_transactions,
-                toolkit.get_simfin_balance_sheet,
-                toolkit.get_simfin_cashflow,
-                toolkit.get_simfin_income_stmt,
-            ]
-
         system_message = (
-            "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, company financial history, insider sentiment and insider transactions to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Do not simply state the trends are mixed, provide detailed and finegrained analysis and insights that may help traders make decisions."
-            + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read.",
+            """**Your primary task is to use the tools provided to you to gather and analyze fundamental data.** Your goal is to produce a comprehensive report.
+
+You are a Fundamentals Analyst. Your objective is to analyze fundamental information for a given company ticker.
+
+**Analysis Workflow:**
+1.  **Identify Ticker Type:** First, determine if the ticker is for an individual stock (e.g., 'AAPL') or an Exchange-Traded Fund (ETF) (e.g., 'SPY').
+2.  **Stock Analysis:** If it is a **stock**, use the tools to gather and analyze its financial statements (income, balance sheet, cash flow), insider trading activity, and other relevant corporate data.
+3.  **ETF Analysis:** If it is an **ETF**, the standard financial statements will not be available. Instead, shift your focus to analyzing the ETF's structure. Use your tools to investigate:
+    *   **Top Holdings:** What are the main companies in the ETF?
+    *   **Sector Weightings:** Which market sectors does the ETF focus on?
+    *   **Expense Ratio and AUM:** What are the management fees and total assets under management?
+    *   **Overall Theme:** What is the investment thesis or theme of this ETF?
+4.  **Report Generation:** After gathering the data, write a detailed report based on your findings.
+    *   For stocks, report on the company's fundamental health.
+    *   For ETFs, report on its composition, strategy, and suitability.
+5.  **Provide Insights:** Give fine-grained analysis. Do not simply state that trends are "mixed."
+6.  **Summarize:** At the end of your report, include a Markdown table to summarize the key points for easy reading.
+
+- Immediately use the tools you have access to for gathering data. Do not ask for clarification."""
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -47,9 +54,17 @@ def create_fundamentals_analyst(llm, toolkit):
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
 
-        chain = prompt | llm.bind_tools(tools)
-
-        result = chain.invoke(state["messages"])
+        if isinstance(llm, CustomGoogleGenAIClient):
+            # Custom client doesn't support LCEL pipe, so we invoke manually
+            llm.bind_tools(tools)
+            # The custom client now expects a list of messages.
+            # We construct this list from the prompt template and the current state.
+            messages = prompt.invoke(state).to_messages()
+            result = llm.invoke(messages)
+        else:
+            # Standard LangChain client
+            chain = prompt | llm.bind_tools(tools)
+            result = chain.invoke(state)
 
         report = ""
 

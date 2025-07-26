@@ -1,9 +1,10 @@
+import logging
 from typing import Annotated, Dict
-from .reddit_utils import fetch_top_from_category
+from .reddit_utils import fetch_top_from_category, fetch_reddit_posts_online
 from .yfin_utils import *
 from .stockstats_utils import *
 from .googlenews_utils import *
-from .finnhub_utils import get_data_in_range
+from .finnhub_utils import get_data_in_range, get_finnhub_news_online
 from dateutil.relativedelta import relativedelta
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -56,6 +57,47 @@ def get_finnhub_news(
             combined_result += current_news + "\n\n"
 
     return f"## {ticker} News, from {before} to {curr_date}:\n" + str(combined_result)
+
+
+def get_finnhub_news_online_interface(
+    ticker: Annotated[
+        str,
+        "Search query of a company's, e.g. 'AAPL, TSM, etc.",
+    ],
+    curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+    look_back_days: Annotated[int, "how many days to look back"],
+):
+    """
+    Retrieve news about a company within a time frame from Finnhub's online API.
+
+    Args:
+        ticker (str): ticker for the company you are interested in
+        curr_date (str): Current date in yyyy-mm-dd format
+        look_back_days (int): how many days to look back
+    Returns:
+        str: A formatted string containing the news of the company in the time frame.
+    """
+    end_date = datetime.strptime(curr_date, "%Y-%m-%d")
+    start_date = end_date - relativedelta(days=look_back_days)
+    
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date_str = end_date.strftime("%Y-%m-%d")
+
+    result = get_finnhub_news_online(ticker, start_date_str, end_date_str)
+
+    if not result:
+        return f"No online news found for {ticker} from {start_date_str} to {end_date_str}."
+
+    combined_result = ""
+    for entry in result:
+        # Convert timestamp to readable date
+        news_date = datetime.fromtimestamp(entry["datetime"]).strftime('%Y-%m-%d')
+        current_news = (
+            "### " + entry["headline"] + f" ({news_date})" + "\n" + entry["summary"]
+        )
+        combined_result += current_news + "\n\n"
+
+    return f"## {ticker} Online News, from {start_date_str} to {end_date_str}:\n" + str(combined_result)
 
 
 def get_finnhub_company_insider_sentiment(
@@ -141,7 +183,36 @@ def get_finnhub_company_insider_transactions(
     )
 
 
-def get_simfin_balance_sheet(
+def get_balance_sheet_online(
+    ticker: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
+    freq: Annotated[str, "The frequency of the report: 'annual' or 'quarterly'."],
+) -> str:
+    """
+    Fetches the most recent balance sheet for a given ticker online using yfinance.
+    Args:
+        ticker: The stock ticker symbol.
+        freq: The frequency ('annual' or 'quarterly').
+    Returns:
+        A formatted string of the balance sheet data.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        if freq.lower() == 'annual':
+            data = stock.balance_sheet
+        elif freq.lower() == 'quarterly':
+            data = stock.quarterly_balance_sheet
+        else:
+            return "Error: Frequency must be 'annual' or 'quarterly'."
+
+        if data.empty:
+            return f"No online balance sheet data found for {ticker}."
+
+        return f"## {ticker} Online {freq.capitalize()} Balance Sheet:\n\n{data.to_string()}\n"
+    except Exception as e:
+        return f"Error fetching online balance sheet for {ticker}: {e}"
+
+
+def get_simfin_balance_sheet_offline(
     ticker: Annotated[str, "ticker symbol"],
     freq: Annotated[
         str,
@@ -158,7 +229,10 @@ def get_simfin_balance_sheet(
         "us",
         f"us-balance-{freq}.csv",
     )
-    df = pd.read_csv(data_path, sep=";")
+    try:
+        df = pd.read_csv(data_path, sep=";")
+    except FileNotFoundError:
+        return f"Error: Offline data file not found at {data_path}. Please ensure the necessary data is downloaded."
 
     # Convert date strings to datetime objects and remove any time components
     df["Report Date"] = pd.to_datetime(df["Report Date"], utc=True).dt.normalize()
@@ -188,7 +262,36 @@ def get_simfin_balance_sheet(
     )
 
 
-def get_simfin_cashflow(
+def get_cashflow_online(
+    ticker: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
+    freq: Annotated[str, "The frequency of the report: 'annual' or 'quarterly'."],
+) -> str:
+    """
+    Fetches the most recent cash flow statement for a given ticker online using yfinance.
+    Args:
+        ticker: The stock ticker symbol.
+        freq: The frequency ('annual' or 'quarterly').
+    Returns:
+        A formatted string of the cash flow statement data.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        if freq.lower() == 'annual':
+            data = stock.cashflow
+        elif freq.lower() == 'quarterly':
+            data = stock.quarterly_cashflow
+        else:
+            return "Error: Frequency must be 'annual' or 'quarterly'."
+
+        if data.empty:
+            return f"No online cash flow data found for {ticker}."
+
+        return f"## {ticker} Online {freq.capitalize()} Cash Flow Statement:\n\n{data.to_string()}\n"
+    except Exception as e:
+        return f"Error fetching online cash flow for {ticker}: {e}"
+
+
+def get_simfin_cashflow_offline(
     ticker: Annotated[str, "ticker symbol"],
     freq: Annotated[
         str,
@@ -205,7 +308,10 @@ def get_simfin_cashflow(
         "us",
         f"us-cashflow-{freq}.csv",
     )
-    df = pd.read_csv(data_path, sep=";")
+    try:
+        df = pd.read_csv(data_path, sep=";")
+    except FileNotFoundError:
+        return f"Error: Offline data file not found at {data_path}. Please ensure the necessary data is downloaded."
 
     # Convert date strings to datetime objects and remove any time components
     df["Report Date"] = pd.to_datetime(df["Report Date"], utc=True).dt.normalize()
@@ -235,7 +341,36 @@ def get_simfin_cashflow(
     )
 
 
-def get_simfin_income_statements(
+def get_income_statement_online(
+    ticker: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
+    freq: Annotated[str, "The frequency of the report: 'annual' or 'quarterly'."],
+) -> str:
+    """
+    Fetches the most recent income statement for a given ticker online using yfinance.
+    Args:
+        ticker: The stock ticker symbol.
+        freq: The frequency ('annual' or 'quarterly').
+    Returns:
+        A formatted string of the income statement data.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        if freq.lower() == 'annual':
+            data = stock.income_stmt
+        elif freq.lower() == 'quarterly':
+            data = stock.quarterly_income_stmt
+        else:
+            return "Error: Frequency must be 'annual' or 'quarterly'."
+
+        if data.empty:
+            return f"No online income statement data found for {ticker}."
+
+        return f"## {ticker} Online {freq.capitalize()} Income Statement:\n\n{data.to_string()}\n"
+    except Exception as e:
+        return f"Error fetching online income statement for {ticker}: {e}"
+
+
+def get_simfin_income_stmt_offline(
     ticker: Annotated[str, "ticker symbol"],
     freq: Annotated[
         str,
@@ -252,7 +387,10 @@ def get_simfin_income_statements(
         "us",
         f"us-income-{freq}.csv",
     )
-    df = pd.read_csv(data_path, sep=";")
+    try:
+        df = pd.read_csv(data_path, sep=";")
+    except FileNotFoundError:
+        return f"Error: Offline data file not found at {data_path}. Please ensure the necessary data is downloaded."
 
     # Convert date strings to datetime objects and remove any time components
     df["Report Date"] = pd.to_datetime(df["Report Date"], utc=True).dt.normalize()
@@ -280,6 +418,37 @@ def get_simfin_income_statements(
         + str(latest_income)
         + "\n\nThis includes metadata like reporting dates and currency, share details, and a comprehensive breakdown of the company's financial performance. Starting with Revenue, it shows Cost of Revenue and resulting Gross Profit. Operating Expenses are detailed, including SG&A, R&D, and Depreciation. The statement then shows Operating Income, followed by non-operating items and Interest Expense, leading to Pretax Income. After accounting for Income Tax and any Extraordinary items, it concludes with Net Income, representing the company's bottom-line profit or loss for the period."
     )
+
+
+def get_reddit_stock_info_online(
+    ticker: Annotated[str, "The stock ticker symbol to search for, e.g., 'AAPL'."],
+    look_back_days: Annotated[int, "How many days back from the current date to search for posts."],
+) -> str:
+    """
+    Fetches recent Reddit posts for a given ticker from popular investing subreddits online.
+    Args:
+        ticker: The stock ticker to search for.
+        look_back_days: How many days back to search.
+    Returns:
+        A formatted string containing the top Reddit posts about the ticker.
+    """
+    posts = fetch_reddit_posts_online(ticker, look_back_days)
+
+    if not posts:
+        return f"## No recent online Reddit posts found for {ticker} in the last {look_back_days} days.\n"
+
+    news_str = ""
+    for post in posts:
+        content = post.get('content', '')
+        if not content or content.strip() == "[removed]" or content.strip() == "[deleted]":
+            content = "No content available."
+        
+        news_str += f"### r/{post['subreddit']}: {post['title']} (Upvotes: {post['upvotes']})\n"
+        news_str += f"**Posted on:** {post['posted_date']}\n"
+        news_str += f"**Content:** {content[:1000]}...\n" # Truncate long posts
+        news_str += f"**URL:** {post['url']}\n\n"
+
+    return f"## Recent Online Reddit Posts for {ticker}:\n\n{news_str}"
 
 
 def get_google_news(
@@ -360,9 +529,9 @@ def get_reddit_global_news(
     return f"## Global News Reddit, from {before} to {curr_date}:\n{news_str}"
 
 
-def get_reddit_company_news(
+def get_reddit_stock_info_offline(
     ticker: Annotated[str, "ticker symbol of the company"],
-    start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
+    curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
     look_back_days: Annotated[int, "how many days to look back"],
     max_limit_per_day: Annotated[int, "Maximum number of news per day"],
 ) -> str:
@@ -376,22 +545,22 @@ def get_reddit_company_news(
         str: A formatted dataframe containing the latest news articles posts on reddit and meta information in these columns: "created_utc", "id", "title", "selftext", "score", "num_comments", "url"
     """
 
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    before = start_date - relativedelta(days=look_back_days)
-    before = before.strftime("%Y-%m-%d")
+    start_date_obj = datetime.strptime(curr_date, "%Y-%m-%d")
+    before = start_date_obj - relativedelta(days=look_back_days)
+    before_str = before.strftime("%Y-%m-%d")
 
     posts = []
     # iterate from start_date to end_date
-    curr_date = datetime.strptime(before, "%Y-%m-%d")
+    curr_date_obj = datetime.strptime(before_str, "%Y-%m-%d")
 
-    total_iterations = (start_date - curr_date).days + 1
+    total_iterations = (start_date_obj - curr_date_obj).days + 1
     pbar = tqdm(
-        desc=f"Getting Company News for {ticker} on {start_date}",
+        desc=f"Getting Offline Reddit Company News for {ticker} on {curr_date}",
         total=total_iterations,
     )
 
-    while curr_date <= start_date:
-        curr_date_str = curr_date.strftime("%Y-%m-%d")
+    while curr_date_obj <= start_date_obj:
+        curr_date_str = curr_date_obj.strftime("%Y-%m-%d")
         fetch_result = fetch_top_from_category(
             "company_news",
             curr_date_str,
@@ -400,7 +569,7 @@ def get_reddit_company_news(
             data_path=os.path.join(DATA_DIR, "reddit_data"),
         )
         posts.extend(fetch_result)
-        curr_date += relativedelta(days=1)
+        curr_date_obj += relativedelta(days=1)
 
         pbar.update(1)
 
@@ -416,7 +585,7 @@ def get_reddit_company_news(
         else:
             news_str += f"### {post['title']}\n\n{post['content']}\n\n"
 
-    return f"##{ticker} News Reddit, from {before} to {curr_date}:\n\n{news_str}"
+    return f"##{ticker} Offline Reddit News, from {before_str} to {curr_date}:\n\n{news_str}"
 
 
 def get_stock_stats_indicators_window(
@@ -673,12 +842,14 @@ def get_YFin_data(
     end_date: Annotated[str, "End date in yyyy-mm-dd format"],
 ) -> str:
     # read in data
-    data = pd.read_csv(
-        os.path.join(
-            DATA_DIR,
-            f"market_data/price_data/{symbol}-YFin-data-2015-01-01-2025-03-25.csv",
-        )
+    data_path = os.path.join(
+        DATA_DIR,
+        f"market_data/price_data/{symbol}-YFin-data-2015-01-01-2025-03-25.csv",
     )
+    try:
+        data = pd.read_csv(data_path)
+    except FileNotFoundError:
+        return f"Error: Offline data file not found for ticker {symbol} at {data_path}. Please ensure the necessary data is downloaded."
 
     if end_date > "2025-03-25":
         raise Exception(
@@ -704,6 +875,10 @@ def get_YFin_data(
 
 def get_stock_news_openai(ticker, curr_date):
     config = get_config()
+    provider = config.get("llm_provider", "openai").lower()
+    if provider not in ["openai", "ollama", "openrouter"]:
+        return f"Error: get_stock_news_openai is only supported for OpenAI-compatible providers, but the current provider is '{provider}'."
+
     client = OpenAI(base_url=config["backend_url"])
 
     response = client.responses.create(
@@ -739,6 +914,10 @@ def get_stock_news_openai(ticker, curr_date):
 
 def get_global_news_openai(curr_date):
     config = get_config()
+    provider = config.get("llm_provider", "openai").lower()
+    if provider not in ["openai", "ollama", "openrouter"]:
+        return f"Error: get_global_news_openai is only supported for OpenAI-compatible providers, but the current provider is '{provider}'."
+
     client = OpenAI(base_url=config["backend_url"])
 
     response = client.responses.create(
@@ -774,6 +953,10 @@ def get_global_news_openai(curr_date):
 
 def get_fundamentals_openai(ticker, curr_date):
     config = get_config()
+    provider = config.get("llm_provider", "openai").lower()
+    if provider not in ["openai", "ollama", "openrouter"]:
+        return f"Error: get_fundamentals_openai is only supported for OpenAI-compatible providers, but the current provider is '{provider}'."
+
     client = OpenAI(base_url=config["backend_url"])
 
     response = client.responses.create(
