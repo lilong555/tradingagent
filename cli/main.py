@@ -733,10 +733,7 @@ def extract_content_string(content):
     else:
         return str(content)
 
-def run_analysis():
-    # First get all user selections
-    selections = get_user_selections()
-
+def run_analysis(selections: dict):
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
     config["max_debate_rounds"] = selections["research_depth"]
@@ -1150,8 +1147,46 @@ def upload_reports_to_notion(report_dir: Path):
 
 
 @app.command()
-def analyze():
-    run_analysis()
+def analyze(
+    ticker: str = typer.Option("SPY", "--ticker", help="Ticker symbol to analyze."),
+    analysis_date: str = typer.Option(datetime.datetime.now().strftime("%Y-%m-%d"), "--analysis-date", help="Analysis date in YYYY-MM-DD format."),
+    analysts: Optional[List[AnalystType]] = typer.Option(None, "--analysts", help="List of analysts to use."),
+    research_depth: int = typer.Option(1, "--research-depth", help="Research depth (1, 3, or 5)."),
+    llm_provider: str = typer.Option("openai", "--llm-provider", help="LLM provider (e.g., openai, anthropic)."),
+    shallow_thinker: str = typer.Option("gpt-4o-mini", "--shallow-thinker", help="Model for shallow thinking."),
+    deep_thinker: str = typer.Option("gpt-4o", "--deep-thinker", help="Model for deep thinking."),
+):
+    """
+    Run the trading analysis with specified parameters.
+    """
+    # Define the mapping from provider name to URL
+    provider_urls = {
+        "openai": "https://api.openai.com/v1",
+        "anthropic": "https://api.anthropic.com/",
+        "google": "https://azyfmoffhswo.ap-northeast-1.clawcloudrun.com/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
+        "ollama": "http://localhost:11434/v1",
+    }
+    backend_url = provider_urls.get(llm_provider.lower())
+    if not backend_url:
+        console.print(f"[red]Invalid LLM provider: {llm_provider}[/red]")
+        raise typer.Exit()
+
+    # If analysts are not provided, use all as default
+    if not analysts:
+        analysts = [analyst.value for analyst in AnalystType]
+
+    selections = {
+        "ticker": ticker,
+        "analysis_date": analysis_date,
+        "analysts": analysts,
+        "research_depth": research_depth,
+        "llm_provider": llm_provider,
+        "backend_url": backend_url,
+        "shallow_thinker": shallow_thinker,
+        "deep_thinker": deep_thinker,
+    }
+    run_analysis(selections)
 
 
 if __name__ == "__main__":
