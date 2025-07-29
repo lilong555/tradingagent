@@ -26,7 +26,8 @@ You are a Market Analyst. Your objective is to analyze market data for a given c
     You can and should analyze other indicators you find relevant from the tools provided.
 3.  **Handle All Tickers:** The ticker can be a stock (e.g., 'AAPL') or an ETF (e.g., 'SPY'). Proceed with the analysis for any given ticker.
 4.  **Synthesize and Report:** After gathering data and indicator values, write a detailed and nuanced report of the trends you observe. Do not simply state the trends are "mixed." Provide fine-grained analysis and insights that may help traders make decisions.
-5.  **Summarize:** At the end of your report, include a Markdown table to summarize the key points for easy reading."""
+5.  **Summarize:** At the end of your report, include a Markdown table to summarize the key points for easy reading.
+The stock code provided by the user may not be correct; you need to identify the correct one."""
         )
 
         prompt = ChatPromptTemplate.from_messages(

@@ -38,6 +38,7 @@ class YFinanceUtils:
         end_date = pd.to_datetime(end_date) + pd.DateOffset(days=1)
         end_date = end_date.strftime("%Y-%m-%d")
         stock_data = ticker.history(start=start_date, end=end_date)
+        stock_data = stock_data.reset_index()
         # save_output(stock_data, f"Stock data for {ticker.ticker}", save_path)
         return stock_data
 

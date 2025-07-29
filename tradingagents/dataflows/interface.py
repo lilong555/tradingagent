@@ -710,6 +710,12 @@ def get_stock_stats_indicators_window(
             if data.empty:
                 return f"No online data available for {symbol} in the specified date range."
 
+            # stockstats expects lowercase column names
+            data.columns = [x.lower() for x in data.columns]
+            
+            # Ensure 'date' column is in datetime format without time for calculations
+            data['date'] = pd.to_datetime(data['date']).dt.normalize()
+
             # Calculate indicator for the entire dataframe
             stock_df = wrap(data)
             stock_df[indicator] # Trigger calculation
@@ -718,6 +724,7 @@ def get_stock_stats_indicators_window(
             ind_string = ""
             # Iterate through the dataframe rows in reverse (from most recent to oldest)
             for index, row in stock_df.iloc[::-1].iterrows():
+                # The date is now in the 'date' column
                 date_str = row['date'].strftime('%Y-%m-%d')
                 indicator_value = row.get(indicator)
                 if pd.notna(indicator_value):
