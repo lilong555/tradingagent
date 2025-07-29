@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import datetime
 import typer
 from pathlib import Path
@@ -745,7 +745,7 @@ def run_analysis(selections: dict):
 
     # Initialize the graph
     graph = TradingAgentsGraph(
-        [analyst.value for analyst in selections["analysts"]], config=config, debug=True
+        [analyst for analyst in selections["analysts"]], config=config, debug=True
     )
 
     # Create result directory
@@ -809,7 +809,7 @@ def run_analysis(selections: dict):
         )
         message_buffer.add_message(
             "System",
-            f"Selected analysts: {', '.join(analyst.value for analyst in selections['analysts'])}",
+            f"Selected analysts: {', '.join(analyst for analyst in selections['analysts'])}",
         )
         update_display(layout)
 
@@ -824,7 +824,7 @@ def run_analysis(selections: dict):
         message_buffer.final_report = None
 
         # Update agent status to in_progress for the first analyst
-        first_analyst = f"{selections['analysts'][0].value.capitalize()} Analyst"
+        first_analyst = f"{selections['analysts'][0].capitalize()} Analyst"
         message_buffer.update_agent_status(first_analyst, "in_progress")
         update_display(layout)
 
