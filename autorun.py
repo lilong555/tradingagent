@@ -2,10 +2,12 @@ import json
 import subprocess
 import sys
 import os
+import datetime
 
 def main():
     """
     Reads configuration from config.json and runs the analysis command.
+    The analysis date is dynamically set to the current date.
     """
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,12 +24,15 @@ def main():
         print(f"Error: Could not decode {config_path}.", file=sys.stderr)
         sys.exit(1)
 
+    # Dynamically set the analysis date to the current date
+    analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
     command = [
         sys.executable,
         cli_path,
         "analyze",
         "--ticker", config["ticker"],
-        "--analysis-date", config["analysis_date"],
+        "--analysis-date", analysis_date,
         "--research-depth", str(config["research_depth"]),
         "--llm-provider", config["llm_provider"],
         "--shallow-thinker", config["shallow_thinker"],
