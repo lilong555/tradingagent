@@ -378,3 +378,49 @@ This document records the changes made to the TradingAgents project.
     *   Modified all three risk debator files.
     *   Added `from langchain_core.messages import HumanMessage` to each file.
     *   Changed the `llm.invoke(prompt)` call to `llm.invoke([HumanMessage(content=prompt)])` to ensure the prompt is correctly passed as a message object.
+
+## Change 24: Add Automatic Report Upload to Notion
+
+**Date:** 2025-07-29
+
+**Goal:** Implement a feature to automatically upload all generated markdown reports to a Notion database at the end of the analysis process.
+
+### Plan:
+
+1.  **Create Standalone Upload Script**:
+    *   Created a new script `TradingAgents/cli/upload_to_notion.py` based on user-provided code.
+    *   Refactored the script to remove all GUI dependencies (`tkinter`).
+    *   Modified the script to read the `NOTION_TOKEN` and `NOTION_DATABASE_ID` from environment variables instead of hard-coded values.
+    *   Converted the script into a command-line tool that accepts a file path as an argument.
+
+2.  **Integrate into Main CLI Workflow**:
+    *   Modified the main CLI file `TradingAgents/cli/main.py`.
+    *   Imported the `os` and `subprocess` modules.
+    *   Created a new function `upload_reports_to_notion(report_dir)` to handle the upload logic.
+    *   This function checks for the necessary environment variables and skips the upload if they are not set.
+    *   It finds all `.md` files in the final report directory.
+    *   For each report file, it calls the `upload_to_notion.py` script using `subprocess.run`.
+
+3.  **Update Main Analysis Function**:
+    *   In `run_analysis` within `cli/main.py`, added a call to the new `upload_reports_to_notion` function after the final report has been displayed, ensuring that uploads happen automatically at the end of the process.
+
+## Change 25: Refactor Notion Upload to Use Properties
+
+**Date:** 2025-07-29
+
+**Goal:** Change the Notion integration to create a single database entry (page) and populate its text properties with the content of each report, rather than creating a separate page for each report.
+
+### Plan:
+
+1.  **Refactor Upload Script (`upload_to_notion.py`)**:
+    *   Modified the script to accept a directory path instead of a single file path.
+    *   The script now iterates through all `.md` files in the provided directory.
+    *   For each file, it reads the content and prepares it as a Notion "Rich Text" object. A 2000-character limit is enforced with truncation.
+    *   It dynamically builds the `properties` payload for the Notion API call. The property name is derived from the filename (e.g., `market_report.md` becomes the `market_report` property).
+    *   The page title is set to the current timestamp.
+    *   The page content (`children`) is left empty, as all data is now in the properties.
+
+2.  **Update CLI Caller (`cli/main.py`)**:
+    *   Modified the `upload_reports_to_notion` function.
+    *   Removed the logic that iterated through files and called the script for each one.
+    *   The function now makes a single call to the `upload_to_notion.py` script, passing the path to the `report_dir` directory.

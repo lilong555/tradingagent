@@ -43,14 +43,13 @@ class StockstatsUtils:
             except FileNotFoundError:
                 raise Exception("Stockstats fail: Yahoo Finance data not fetched yet!")
         else:
-            # Get today's date as YYYY-mm-dd to add to cache
-            today_date = pd.Timestamp.today()
+            # Use curr_date as the basis for the download range
             curr_date = pd.to_datetime(curr_date)
-
-            end_date = today_date
-            start_date = today_date - pd.DateOffset(years=15)
-            start_date = start_date.strftime("%Y-%m-%d")
-            end_date = end_date.strftime("%Y-%m-%d")
+            end_date = curr_date
+            start_date = end_date - pd.DateOffset(years=15) # Ensure a long history for indicator calculation
+            
+            start_date_str = start_date.strftime("%Y-%m-%d")
+            end_date_str = end_date.strftime("%Y-%m-%d")
 
             # Get config and ensure cache directory exists
             config = get_config()
@@ -58,7 +57,7 @@ class StockstatsUtils:
 
             data_file = os.path.join(
                 config["data_cache_dir"],
-                f"{symbol}-YFin-data-{start_date}-{end_date}.csv",
+                f"{symbol}-YFin-data-{start_date_str}-{end_date_str}.csv",
             )
 
             if os.path.exists(data_file):
@@ -67,8 +66,8 @@ class StockstatsUtils:
             else:
                 data = yf.download(
                     symbol,
-                    start=start_date,
-                    end=end_date,
+                    start=start_date_str,
+                    end=end_date_str,
                     multi_level_index=False,
                     progress=False,
                     auto_adjust=True,

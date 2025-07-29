@@ -176,9 +176,15 @@ def fetch_reddit_posts_online(ticker: str, look_back_days: int, max_posts: int =
     subreddits = ["wallstreetbets", "stocks", "investing", "StockMarket"]
     all_posts = []
     
-    # Create a more specific search query
-    search_query = f'"{ticker}" OR "{ticker_to_company.get(ticker, ticker)}"'
+    # Create a more flexible search query
+    company_name = ticker_to_company.get(ticker, ticker)
+    search_terms = [ticker, company_name]
+    if " OR " in company_name:
+        search_terms.extend(company_name.split(" OR "))
     
+    # Remove duplicates and create the final query string
+    search_query = " OR ".join(list(dict.fromkeys(search_terms)))
+
     for subreddit_name in subreddits:
         try:
             subreddit = reddit.subreddit(subreddit_name)

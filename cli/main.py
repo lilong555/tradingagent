@@ -2,6 +2,8 @@ from typing import Optional
 import datetime
 import typer
 from pathlib import Path
+import os
+import subprocess
 from functools import wraps
 from rich.console import Console
 from rich.panel import Panel
@@ -725,8 +727,8 @@ def extract_content_string(content):
                     text_parts.append(item.get('text', ''))
                 elif item.get('type') == 'tool_use':
                     text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
-            else:
-                text_parts.append(str(item))
+                else:
+                    text_parts.append(str(item))
         return ' '.join(text_parts)
     else:
         return str(content)
@@ -1093,7 +1095,58 @@ def run_analysis():
         # Display the complete final report
         display_complete_report(final_state)
 
+        # Upload reports to Notion
+        upload_reports_to_notion(report_dir)
+
         update_display(layout)
+
+
+def upload_reports_to_notion(report_dir: Path):
+    """
+    Uploads reports from a directory to a new Notion database entry,
+    with each report as a separate text property.
+    """
+    console.print("\n[bold blue]Uploading reports to Notion properties...[/bold blue]")
+
+    notion_token = os.getenv("NOTION_TOKEN")
+    notion_database_id = os.getenv("NOTION_DATABASE_ID")
+
+    if not all([notion_token, notion_database_id]):
+        console.print("[yellow]Warning: NOTION_TOKEN or NOTION_DATABASE_ID not set. Skipping Notion upload.[/yellow]")
+        return
+
+    upload_script_path = Path(__file__).parent / "upload_to_notion.py"
+    if not upload_script_path.exists():
+        console.print(f"[red]Error: Upload script not found at {upload_script_path}.[/red]")
+        return
+
+    if not any(report_dir.glob("*.md")):
+        console.print("[yellow]No report files found to upload.[/yellow]")
+        return
+    
+    console.print(f"Uploading reports from directory: {report_dir}")
+
+    try:
+        cmd = ["python", str(upload_script_path), str(report_dir)]
+        process = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding='utf-8',
+            errors='replace'
+        )
+        console.print(f"[green]Successfully triggered Notion upload script.[/green]")
+        if process.stdout:
+            console.print(f"[dim]Script output:\n{process.stdout}[/dim]")
+        if process.stderr:
+            console.print(f"[yellow]Script errors:\n{process.stderr}[/yellow]")
+            
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Failed to execute upload script.[/red]")
+        console.print(f"[red]Error: {e.stderr}[/red]")
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred during upload: {e}[/red]")
 
 
 @app.command()
