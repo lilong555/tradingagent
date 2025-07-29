@@ -703,16 +703,32 @@ def get_stock_stats_indicators_window(
 
             curr_date = curr_date - relativedelta(days=1)
     else:
-        # online gathering
-        ind_string = ""
-        while curr_date >= before:
-            indicator_value = get_stockstats_indicator(
-                symbol, indicator, curr_date.strftime("%Y-%m-%d"), online
-            )
+        # Online gathering: First get the data, then calculate indicators
+        try:
+            # Fetch data for the entire window
+            data = YFinanceUtils.get_stock_data(symbol, before.strftime('%Y-%m-%d'), end_date)
+            if data.empty:
+                return f"No online data available for {symbol} in the specified date range."
 
-            ind_string += f"{curr_date.strftime('%Y-%m-%d')}: {indicator_value}\n"
+            # Calculate indicator for the entire dataframe
+            stock_df = wrap(data)
+            stock_df[indicator] # Trigger calculation
 
-            curr_date = curr_date - relativedelta(days=1)
+            # Format the output string
+            ind_string = ""
+            # Iterate through the dataframe rows in reverse (from most recent to oldest)
+            for index, row in stock_df.iloc[::-1].iterrows():
+                date_str = row['date'].strftime('%Y-%m-%d')
+                indicator_value = row.get(indicator)
+                if pd.notna(indicator_value):
+                    ind_string += f"{date_str}: {indicator_value:.2f}\n"
+            
+            if not ind_string:
+                 ind_string = "Indicator could not be calculated for the given period.\n"
+
+        except Exception as e:
+            logging.error(f"Error during online indicator calculation for {symbol}: {e}")
+            ind_string = f"An error occurred while fetching or calculating indicator: {e}\n"
 
     result_str = (
         f"## {indicator} values from {before.strftime('%Y-%m-%d')} to {end_date}:\n\n"
