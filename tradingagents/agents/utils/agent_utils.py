@@ -186,32 +186,11 @@ class Toolkit:
             str: A formatted dataframe containing the stock price data for the specified ticker symbol in the specified date range.
         """
 
-        logging.info(f"Calling get_YFin_data tool for {symbol} from {start_date} to {end_date}")
-        result_data = interface.get_YFin_data(symbol, start_date, end_date)
-
-        return result_data
-
-    @staticmethod
-    @tool
-    def get_YFin_data_online(
-        symbol: Annotated[str, "ticker symbol of the company"],
-        start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-        end_date: Annotated[str, "End date in yyyy-mm-dd format"],
-    ) -> str:
-        """
-        Retrieve the stock price data for a given ticker symbol from Yahoo Finance.
-        Args:
-            symbol (str): Ticker symbol of the company, e.g. AAPL, TSM
-            start_date (str): Start date in yyyy-mm-dd format
-            end_date (str): End date in yyyy-mm-dd format
-        Returns:
-            str: A formatted dataframe containing the stock price data for the specified ticker symbol in the specified date range.
-        """
-
         logging.info(f"Calling get_YFin_data_online tool for {symbol} from {start_date} to {end_date}")
         result_data = interface.get_YFin_data_online(symbol, start_date, end_date)
 
         return result_data
+
 
     @staticmethod
     @tool
@@ -325,32 +304,7 @@ class Toolkit:
 
     @staticmethod
     @tool
-    def get_simfin_balance_sheet_offline(
-        ticker: Annotated[str, "ticker symbol"],
-        freq: Annotated[
-            str,
-            "reporting frequency of the company's financial history: annual/quarterly",
-        ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
-    ):
-        """
-        Retrieve the most recent balance sheet of a company from offline data.
-        Args:
-            ticker (str): ticker symbol of the company
-            freq (str): reporting frequency of the company's financial history: annual / quarterly
-            curr_date (str): current date you are trading at, yyyy-mm-dd
-        Returns:
-            str: a report of the company's most recent balance sheet
-        """
-
-        logging.info(f"Calling get_simfin_balance_sheet_offline tool for {ticker}")
-        data_balance_sheet = interface.get_simfin_balance_sheet_offline(ticker, freq, curr_date)
-
-        return data_balance_sheet
-
-    @staticmethod
-    @tool
-    def get_balance_sheet_online(
+    def get_balance_sheet(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,
@@ -373,32 +327,7 @@ class Toolkit:
 
     @staticmethod
     @tool
-    def get_simfin_cashflow_offline(
-        ticker: Annotated[str, "ticker symbol"],
-        freq: Annotated[
-            str,
-            "reporting frequency of the company's financial history: annual/quarterly",
-        ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
-    ):
-        """
-        Retrieve the most recent cash flow statement of a company from offline data.
-        Args:
-            ticker (str): ticker symbol of the company
-            freq (str): reporting frequency of the company's financial history: annual / quarterly
-            curr_date (str): current date you are trading at, yyyy-mm-dd
-        Returns:
-                str: a report of the company's most recent cash flow statement
-        """
-
-        logging.info(f"Calling get_simfin_cashflow_offline tool for {ticker}")
-        data_cashflow = interface.get_simfin_cashflow_offline(ticker, freq, curr_date)
-
-        return data_cashflow
-
-    @staticmethod
-    @tool
-    def get_cashflow_online(
+    def get_cashflow(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,
@@ -421,34 +350,7 @@ class Toolkit:
 
     @staticmethod
     @tool
-    def get_simfin_income_stmt_offline(
-        ticker: Annotated[str, "ticker symbol"],
-        freq: Annotated[
-            str,
-            "reporting frequency of the company's financial history: annual/quarterly",
-        ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
-    ):
-        """
-        Retrieve the most recent income statement of a company from offline data.
-        Args:
-            ticker (str): ticker symbol of the company
-            freq (str): reporting frequency of the company's financial history: annual / quarterly
-            curr_date (str): current date you are trading at, yyyy-mm-dd
-        Returns:
-                str: a report of the company's most recent income statement
-        """
-
-        logging.info(f"Calling get_simfin_income_stmt_offline tool for {ticker}")
-        data_income_stmt = interface.get_simfin_income_stmt_offline(
-            ticker, freq, curr_date
-        )
-
-        return data_income_stmt
-
-    @staticmethod
-    @tool
-    def get_income_statement_online(
+    def get_income_statement(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
             str,

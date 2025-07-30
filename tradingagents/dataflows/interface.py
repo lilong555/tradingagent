@@ -124,7 +124,7 @@ def get_finnhub_company_insider_sentiment(
     data = get_data_in_range(ticker, before, curr_date, "insider_senti", DATA_DIR)
 
     if len(data) == 0:
-        return ""
+        return "Offline Finnhub insider sentiment data not found. This feature requires a local data cache."
 
     result_str = ""
     seen_dicts = []
@@ -165,7 +165,7 @@ def get_finnhub_company_insider_transactions(
     data = get_data_in_range(ticker, before, curr_date, "insider_trans", DATA_DIR)
 
     if len(data) == 0:
-        return ""
+        return "Offline Finnhub insider transaction data not found. This feature requires a local data cache."
 
     result_str = ""
 
