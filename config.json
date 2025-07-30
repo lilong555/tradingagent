@@ -1,0 +1,8 @@
+{
+  "ticker": "AAPL",
+  "analysts": ["market", "social", "news", "fundamentals"],
+  "research_depth": 1,
+  "llm_provider": "google",
+  "shallow_thinker": "gemini-2.5-flash-lite",
+  "deep_thinker": "gemini-2.5-flash-lite"
+}

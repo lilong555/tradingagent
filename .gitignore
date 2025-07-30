@@ -25,7 +25,6 @@ eval_data/
 
 # Data files
 *.csv
-*.json
 *.jsonl
 data/
 dataflows/data_cache/
