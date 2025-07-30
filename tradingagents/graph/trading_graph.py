@@ -112,8 +112,14 @@ class TradingAgentsGraph:
         self.ticker = None
         self.log_states_dict = {}  # date to full state dict
 
+        # Convert analyst enums to string values if they are not already strings
+        analyst_values = [
+            analyst.value if hasattr(analyst, "value") else analyst
+            for analyst in selected_analysts
+        ]
+
         # Set up the graph
-        self.graph = self.graph_setup.setup_graph(selected_analysts)
+        self.graph = self.graph_setup.setup_graph(analyst_values)
         
         logging.info("TradingAgentsGraph initialized successfully.")
 

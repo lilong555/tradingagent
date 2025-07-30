@@ -30,7 +30,6 @@ def main():
     command = [
         sys.executable,
         cli_path,
-        "analyze",
         "--ticker", config["ticker"],
         "--analysis-date", analysis_date,
         "--research-depth", str(config["research_depth"]),
