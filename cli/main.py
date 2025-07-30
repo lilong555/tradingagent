@@ -3,6 +3,7 @@ import datetime
 import typer
 from pathlib import Path
 import os
+import sys
 import subprocess
 from functools import wraps
 from rich.console import Console
@@ -1105,26 +1106,49 @@ def upload_reports_to_notion(report_dir: Path):
     """
     console.print("\n[bold blue]Uploading reports to Notion properties...[/bold blue]")
 
+    # Define log file path within the parent results directory
+    log_file_path = report_dir.parent / "notion_upload.log"
+
+    def write_log(message):
+        """Helper function to write messages to the log file."""
+        with open(log_file_path, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.datetime.now()} - {message}\n")
+
+    write_log("--- Starting Notion Upload ---")
+
     notion_token = os.getenv("NOTION_TOKEN")
     notion_database_id = os.getenv("NOTION_DATABASE_ID")
 
     if not all([notion_token, notion_database_id]):
-        console.print("[yellow]Warning: NOTION_TOKEN or NOTION_DATABASE_ID not set. Skipping Notion upload.[/yellow]")
+        message = "Warning: NOTION_TOKEN or NOTION_DATABASE_ID not set. Skipping Notion upload."
+        console.print(f"[yellow]{message}[/yellow]")
+        write_log(message)
+        write_log("--- Finished Notion Upload (Skipped) ---")
         return
 
     upload_script_path = Path(__file__).parent / "upload_to_notion.py"
     if not upload_script_path.exists():
-        console.print(f"[red]Error: Upload script not found at {upload_script_path}.[/red]")
+        message = f"Error: Upload script not found at {upload_script_path}."
+        console.print(f"[red]{message}[/red]")
+        write_log(message)
+        write_log("--- Finished Notion Upload (Error) ---")
         return
 
     if not any(report_dir.glob("*.md")):
-        console.print("[yellow]No report files found to upload.[/yellow]")
+        message = "Warning: No report files found to upload."
+        console.print(f"[yellow]{message}[/yellow]")
+        write_log(message)
+        write_log("--- Finished Notion Upload (No files) ---")
         return
     
     console.print(f"Uploading reports from directory: {report_dir}")
+    write_log(f"Attempting to upload reports from directory: {report_dir}")
 
     try:
-        cmd = ["python", str(upload_script_path), str(report_dir)]
+        # Using sys.executable is more robust for cross-platform compatibility
+        cmd = [sys.executable, str(upload_script_path), str(report_dir)]
+        write_log(f"Executing command: {' '.join(cmd)}")
+
         process = subprocess.run(
             cmd,
             capture_output=True,
@@ -1133,17 +1157,34 @@ def upload_reports_to_notion(report_dir: Path):
             encoding='utf-8',
             errors='replace'
         )
-        console.print(f"[green]Successfully triggered Notion upload script.[/green]")
+        
+        success_message = "Successfully triggered Notion upload script."
+        console.print(f"[green]{success_message}[/green]")
+        write_log(success_message)
+
         if process.stdout:
             console.print(f"[dim]Script output:\n{process.stdout}[/dim]")
+            write_log(f"Script STDOUT:\n{process.stdout}")
         if process.stderr:
             console.print(f"[yellow]Script errors:\n{process.stderr}[/yellow]")
+            write_log(f"Script STDERR:\n{process.stderr}")
             
     except subprocess.CalledProcessError as e:
-        console.print(f"[red]Failed to execute upload script.[/red]")
-        console.print(f"[red]Error: {e.stderr}[/red]")
+        error_message = f"Failed to execute upload script. Return code: {e.returncode}"
+        console.print(f"[red]{error_message}[/red]")
+        write_log(error_message)
+        if e.stderr:
+            console.print(f"[red]Error: {e.stderr}[/red]")
+            write_log(f"Script STDERR:\n{e.stderr}")
+        if e.stdout:
+            write_log(f"Script STDOUT:\n{e.stdout}")
+
     except Exception as e:
-        console.print(f"[red]An unexpected error occurred during upload: {e}[/red]")
+        error_message = f"An unexpected error occurred during upload: {e}"
+        console.print(f"[red]{error_message}[/red]")
+        write_log(error_message)
+    
+    write_log("--- Finished Notion Upload ---")
 
 
 @app.command()
