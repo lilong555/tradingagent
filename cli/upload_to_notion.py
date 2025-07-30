@@ -22,10 +22,10 @@ NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 
 # 3. 数据库中【标题】属性的【准确名称】(大小写敏感)
-TITLE_PROPERTY_NAME = "名称" # 例如: "Name" 或 "文章标题"
+TITLE_PROPERTY_NAME = "Name" # 例如: "Name" 或 "文章标题"
 
 # 4. 数据库中【日期】属性的【准确名称】(大小写敏感)
-DATE_PROPERTY_NAME = "创建时间" # 例如: "Date" 或 "发布日期"
+DATE_PROPERTY_NAME = "Date" # 例如: "Date" 或 "发布日期"
 
 # ==============================================================================
 
