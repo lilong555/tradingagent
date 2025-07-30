@@ -145,9 +145,8 @@ class TradingAgentsGraph:
         # Define base tools available for all providers
         analyst_tools = {
             "market": [
-                self.toolkit.get_YFin_data_online,
-                self.toolkit.get_stockstats_indicators_report_online,
                 self.toolkit.get_YFin_data,
+                self.toolkit.get_stockstats_indicators_report_online,
                 self.toolkit.get_stockstats_indicators_report,
             ],
             "social": [
@@ -161,14 +160,11 @@ class TradingAgentsGraph:
                 self.toolkit.get_reddit_news,
             ],
             "fundamentals": [
-                self.toolkit.get_income_statement_online,
-                self.toolkit.get_balance_sheet_online,
-                self.toolkit.get_cashflow_online,
+                self.toolkit.get_income_statement,
+                self.toolkit.get_balance_sheet,
+                self.toolkit.get_cashflow,
                 self.toolkit.get_finnhub_company_insider_sentiment,
                 self.toolkit.get_finnhub_company_insider_transactions,
-                self.toolkit.get_simfin_balance_sheet_offline,
-                self.toolkit.get_simfin_cashflow_offline,
-                self.toolkit.get_simfin_income_stmt_offline,
             ],
         }
 
