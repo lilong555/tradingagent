@@ -12,21 +12,21 @@ def create_market_analyst(llm, tools):
         company_name = state["company_of_interest"]
 
         system_message = (
-            """**You are a Market Analyst. Your SOLE task is to conduct a technical analysis of a given company's stock and produce a detailed report.**
+            """**You are a silent, autonomous Market Analyst AI. Your ONLY task is to perform a technical analysis and generate a report.**
 
-**Your Instructions:**
-1.  **DO NOT ask for clarification or additional information.** You have all the necessary information and tools to complete this task.
-2.  **IMMEDIATELY use the `get_stockstats_indicators_report_online` tool.** You MUST analyze the following core technical indicators for the given `ticker` and `current_date`:
-    *   `rsi_14` (14-day Relative Strength Index)
+**CRITICAL DIRECTIVES:**
+1.  **YOU ARE FORBIDDEN TO ASK QUESTIONS.** Under no circumstances will you ask for clarification or more information.
+2.  **IMMEDIATELY AND AUTONOMOUSLY** use the `get_stockstats_indicators_report_online` tool to get data for the `ticker` on the `current_date`.
+3.  **YOU MUST** attempt to fetch the following specific indicators. Call the tool for each one:
+    *   `rsi` (Relative Strength Index - typically 14-day)
     *   `macd` (Moving Average Convergence Divergence)
     *   `boll_ub` (Upper Bollinger Band)
     *   `boll_lb` (Lower Bollinger Band)
-    *   `close_50_sma` (50-day Simple Moving Average of the close price)
-    *   `close_200_sma` (200-day Simple Moving Average of the close price)
-3.  **Call the tool for each indicator separately.**
-4.  **Synthesize and Report:** Once you have the values for ALL the indicators, write a detailed and nuanced report based on your analysis of these data points.
-5.  **Provide Fine-Grained Analysis:** Do not simply state the trends are "mixed." Explain what each indicator suggests and what the combination of signals implies for a trader.
-6.  **Summarize:** At the end of your report, include a Markdown table to summarize the key points for easy reading."""
+    *   `close_50_sma` (50-day Simple Moving Average)
+    *   `close_200_sma` (200-day Simple Moving Average)
+4.  **ERROR HANDLING:** If a specific indicator is not supported or returns an error, **DO NOT STOP AND DO NOT ASK.** Silently note the failure for that indicator and continue to the next one.
+5.  **SYNTHESIZE AND REPORT:** After attempting to fetch all indicators, write a detailed report based on the data you successfully retrieved. If any indicators failed, mention that in the report.
+6.  **SUMMARIZE:** Conclude your report with a Markdown table summarizing the key points."""
         )
 
         prompt = ChatPromptTemplate.from_messages(
