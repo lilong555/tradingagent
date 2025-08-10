@@ -7,36 +7,61 @@ from langchain_core.messages import HumanMessage, SystemMessage
 def create_trader(llm, memory):
     def trader_node(state, name):
         company_name = state["company_of_interest"]
+        trade_date = state["trade_date"]
         investment_plan = state["investment_plan"]
         market_research_report = state["market_report"]
         sentiment_report = state["sentiment_report"]
         news_report = state["news_report"]
         fundamentals_report = state["fundamentals_report"]
 
-        curr_situation = f"{market_research_report}\n\n{sentiment_report}\n\n{news_report}\n\n{fundamentals_report}"
+        # Consolidate all available reports into a single context string
+        curr_situation = f"""
+### Market Research Report
+{market_research_report}
+
+### Social Media Sentiment Report
+{sentiment_report}
+
+### News Report
+{news_report}
+
+### Fundamentals Report
+{fundamentals_report}
+"""
         past_memories = memory.get_memories(curr_situation, n_matches=2)
 
         past_memory_str = ""
         if past_memories:
             for i, rec in enumerate(past_memories, 1):
-                past_memory_str += rec["recommendation"] + "\n\n"
+                past_memory_str += f"Memory {i}:\n{rec['recommendation']}\n\n"
         else:
             past_memory_str = "No past memories found."
 
-        context = f"Based on a comprehensive analysis by a team of analysts, here is an investment plan tailored for {company_name}. This plan incorporates insights from current technical market trends, macroeconomic indicators, and social media sentiment. Use this plan as a foundation for evaluating your next trading decision.\n\nProposed Investment Plan: {investment_plan}\n\nLeverage these insights to make an informed and strategic decision."
+        system_prompt = f"""You are a **Senior Trader**, a key decision-maker. Your SOLE task is to synthesize the provided analysis and create a final, actionable trading plan.
 
-        system_prompt = f"""You are a **Senior Trader**, a key decision-maker in this operation. Your sole responsibility is to synthesize the comprehensive analysis provided by your team of analysts and the Research Manager's proposed plan. You are not a passive assistant; you are an active, decisive trader.
+**CRITICAL INSTRUCTIONS:**
+1.  **DO NOT ask for clarification or more information.** You have been given ALL necessary data.
+2.  The company is **{company_name}**. The current date is **{trade_date}**.
+3.  Review all provided materials: the analyst reports, the proposed investment plan, and past memories.
+4.  Your output MUST be a concrete trading plan with a clear entry price, target price, and stop-loss price.
+5.  You MUST conclude your entire response with the mandatory 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL**' tag. This is not optional.
 
-**Your Task:**
-1.  **Review all provided materials:** This includes the market, sentiment, news, and fundamentals reports, as well as the final investment plan from the Research Team.
-2.  **Consider Past Lessons:** Reflect on the provided memories from similar past trading situations (`{past_memory_str}`) to avoid repeating mistakes.
-3.  **Formulate a Concrete Trading Plan:** Based on all available information, create a detailed and actionable trading plan. This plan must include:
-    *   A clear entry price.
-    *   A target price for taking profits.
-    *   A stop-loss price to manage risk.
-4.  **Make a Definitive Decision:** Conclude your entire response with the mandatory 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL**' tag. This is not optional. Your response is incomplete without it.
+Analyze the data and commit to a decision. It is your only purpose."""
 
-Do not state that you cannot make a decision. Your entire purpose is to make one. Analyze the data and commit to a plan."""
+        context = f"""
+**TO-DO: Create a final trading plan for {company_name} for {trade_date}.**
+
+**1. Analyst Reports:**
+{curr_situation}
+
+**2. Research Manager's Proposed Plan:**
+{investment_plan}
+
+**3. Relevant Past Memories:**
+{past_memory_str}
+
+Based on all of the above, formulate your final, concrete trading plan.
+"""
 
         messages = [
             SystemMessage(content=system_prompt),
