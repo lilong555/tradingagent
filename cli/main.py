@@ -502,10 +502,16 @@ def get_ticker():
 
 def get_analysis_date():
     """Get the analysis date from user input."""
+    default_date = datetime.datetime.now().strftime("%Y-%m-%d")
     while True:
         date_str = typer.prompt(
-            "", default=datetime.datetime.now().strftime("%Y-%m-%d")
+            "", default=default_date
         )
+        # If the user just presses Enter, typer.prompt might return an empty string
+        # instead of the default. We handle that here.
+        if not date_str:
+            date_str = default_date
+            
         try:
             # Validate date format and ensure it's not in the future
             analysis_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
