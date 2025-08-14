@@ -93,6 +93,11 @@ class StockstatsUtils:
         # Now, df is guaranteed to be a wrapped dataframe with datetime 'Date' column
         df[indicator]  # trigger stockstats to calculate the indicator
         
+        # To ensure a flawless comparison, make both datetime objects timezone-naive.
+        # yfinance can sometimes return timezone-aware dates.
+        df['Date'] = df['Date'].dt.tz_localize(None)
+        curr_date = curr_date.tz_localize(None)
+
         # Perform a direct, robust datetime comparison (ignoring time part).
         matching_rows = df[df["Date"].dt.normalize() == curr_date.normalize()]
 
