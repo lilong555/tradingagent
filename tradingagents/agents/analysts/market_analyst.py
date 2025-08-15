@@ -36,7 +36,7 @@ def create_market_analyst(llm, tools):
         raw_data_df = data_tool(symbol=ticker, start_date=start_date, end_date=current_date)
 
         report = ""
-        if raw_data_df.empty:
+        if not isinstance(raw_data_df, pd.DataFrame) or raw_data_df.empty:
             report = f"Could not retrieve historical stock data for {ticker} for the period {start_date} to {current_date}. Technical analysis cannot be performed."
         else:
             # --- Perform Calculations Internally ---
