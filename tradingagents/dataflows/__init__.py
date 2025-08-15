@@ -21,11 +21,8 @@ from .interface import (
     get_simfin_balance_sheet_offline,
     get_simfin_cashflow_offline,
     get_simfin_income_stmt_offline,
-    # Technical analysis functions
-    get_stock_stats_indicators_window,
-    get_stockstats_indicator,
     # Market data functions
-    get_YFin_data_window,
+    get_daily_stock_data,
     get_YFin_data,
 )
 
@@ -45,10 +42,7 @@ __all__ = [
     "get_simfin_balance_sheet_offline",
     "get_simfin_cashflow_offline",
     "get_simfin_income_stmt_offline",
-    # Technical analysis functions
-    "get_stock_stats_indicators_window",
-    "get_stockstats_indicator",
     # Market data functions
-    "get_YFin_data_window",
+    "get_daily_stock_data",
     "get_YFin_data",
 ]
