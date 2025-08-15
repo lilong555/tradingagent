@@ -145,9 +145,7 @@ class TradingAgentsGraph:
         # Define base tools available for all providers
         analyst_tools = {
             "market": [
-                self.toolkit.get_YFin_data,
-                self.toolkit.get_stockstats_indicators_report_online,
-                self.toolkit.get_stockstats_indicators_report,
+                self.toolkit.get_daily_stock_data,
             ],
             "social": [
                 self.toolkit.get_reddit_stock_info_online,
