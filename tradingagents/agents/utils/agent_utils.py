@@ -171,6 +171,20 @@ class Toolkit:
 
     @staticmethod
     @tool
+    def get_daily_stock_data(
+        symbol: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
+        start_date: Annotated[str, "The start date for the data retrieval in YYYY-MM-DD format."],
+        end_date: Annotated[str, "The end date for the data retrieval in YYYY-MM-DD format."],
+    ) -> pd.DataFrame:
+        """
+        Fetches daily OHLCV (Open, High, Low, Close, Volume) stock data for a given ticker and date range.
+        This tool provides the raw data necessary for all technical analysis calculations.
+        """
+        logging.info(f"Calling get_daily_stock_data tool for {symbol} from {start_date} to {end_date}")
+        return interface.get_daily_stock_data(symbol, start_date, end_date)
+
+    @staticmethod
+    @tool
     def get_YFin_data(
         symbol: Annotated[str, "ticker symbol of the company"],
         start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
@@ -190,67 +204,6 @@ class Toolkit:
         result_data = interface.get_YFin_data_online(symbol, start_date, end_date)
 
         return result_data
-
-
-    @staticmethod
-    @tool
-    def get_stockstats_indicators_report(
-        symbol: Annotated[str, "ticker symbol of the company"],
-        indicator: Annotated[
-            str, "technical indicator to get the analysis and report of"
-        ],
-        curr_date: Annotated[
-            str, "The current trading date you are trading on, YYYY-mm-dd"
-        ],
-        look_back_days: Annotated[int, "how many days to look back"] = 30,
-    ) -> str:
-        """
-        Retrieve stock stats indicators for a given ticker symbol and indicator.
-        Args:
-            symbol (str): Ticker symbol of the company, e.g. AAPL, TSM
-            indicator (str): Technical indicator to get the analysis and report of
-            curr_date (str): The current trading date you are trading on, YYYY-mm-dd
-            look_back_days (int): How many days to look back, default is 30
-        Returns:
-            str: A formatted dataframe containing the stock stats indicators for the specified ticker symbol and indicator.
-        """
-
-        logging.info(f"Calling get_stockstats_indicators_report tool for {symbol} with indicator {indicator}")
-        result_stockstats = interface.get_stock_stats_indicators_window(
-            symbol, indicator, curr_date, look_back_days, False
-        )
-
-        return result_stockstats
-
-    @staticmethod
-    @tool
-    def get_stockstats_indicators_report_online(
-        symbol: Annotated[str, "ticker symbol of the company"],
-        indicator: Annotated[
-            str, "technical indicator to get the analysis and report of"
-        ],
-        curr_date: Annotated[
-            str, "The current trading date you are trading on, YYYY-mm-dd"
-        ],
-        look_back_days: Annotated[int, "how many days to look back"] = 30,
-    ) -> str:
-        """
-        Retrieve stock stats indicators for a given ticker symbol and indicator.
-        Args:
-            symbol (str): Ticker symbol of the company, e.g. AAPL, TSM
-            indicator (str): Technical indicator to get the analysis and report of
-            curr_date (str): The current trading date you are trading on, YYYY-mm-dd
-            look_back_days (int): How many days to look back, default is 30
-        Returns:
-            str: A formatted dataframe containing the stock stats indicators for the specified ticker symbol and indicator.
-        """
-
-        logging.info(f"Calling get_stockstats_indicators_report_online tool for {symbol} with indicator {indicator}")
-        result_stockstats = interface.get_stock_stats_indicators_window(
-            symbol, indicator, curr_date, look_back_days, True
-        )
-
-        return result_stockstats
 
     @staticmethod
     @tool
