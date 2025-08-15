@@ -1,5 +1,5 @@
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
-from typing import List
+from typing import List, Any
 from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import RemoveMessage
@@ -175,10 +175,11 @@ class Toolkit:
         symbol: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
         start_date: Annotated[str, "The start date for the data retrieval in YYYY-MM-DD format."],
         end_date: Annotated[str, "The end date for the data retrieval in YYYY-MM-DD format."],
-    ) -> pd.DataFrame:
+    ) -> Any:
         """
         Fetches daily OHLCV (Open, High, Low, Close, Volume) stock data for a given ticker and date range.
         This tool provides the raw data necessary for all technical analysis calculations.
+        Returns a pandas DataFrame object that can be used for analysis.
         """
         logging.info(f"Calling get_daily_stock_data tool for {symbol} from {start_date} to {end_date}")
         return interface.get_daily_stock_data(symbol, start_date, end_date)

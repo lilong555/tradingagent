@@ -15,14 +15,17 @@ from openai import OpenAI
 from .config import get_config, set_config, DATA_DIR
 from stockstats import wrap
 
+from typing import Any
+
 def get_daily_stock_data(
     symbol: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
     start_date: Annotated[str, "The start date for the data retrieval in YYYY-MM-DD format."],
     end_date: Annotated[str, "The end date for the data retrieval in YYYY-MM-DD format."],
-) -> pd.DataFrame:
+) -> Any:
     """
     Fetches daily OHLCV (Open, High, Low, Close, Volume) stock data for a given ticker and date range.
     This tool provides the raw data necessary for all technical analysis calculations.
+    Returns a pandas DataFrame object that can be used for analysis.
     """
     try:
         # yfinance download is inclusive of start but exclusive of end, so add one day to end_date
