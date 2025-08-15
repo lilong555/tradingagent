@@ -17,6 +17,8 @@ from stockstats import wrap
 
 from typing import Any
 
+import time
+
 def get_daily_stock_data(
     symbol: Annotated[str, "The stock ticker symbol, e.g., 'AAPL'."],
     start_date: Annotated[str, "The start date for the data retrieval in YYYY-MM-DD format."],
@@ -25,29 +27,38 @@ def get_daily_stock_data(
     """
     Fetches daily OHLCV (Open, High, Low, Close, Volume) stock data for a given ticker and date range.
     This tool provides the raw data necessary for all technical analysis calculations.
-    Returns a pandas DataFrame object that can be used for analysis.
+    Returns a pandas DataFrame object that can be used for analysis, or a string with an error message.
     """
-    try:
-        # yfinance download is inclusive of start but exclusive of end, so add one day to end_date
-        end_date_adjusted = (pd.to_datetime(end_date) + pd.DateOffset(days=1)).strftime('%Y-%m-%d')
-        data = yf.download(
-            symbol,
-            start=start_date,
-            end=end_date_adjusted,
-            progress=False,
-            auto_adjust=True,
-        )
-        if data.empty:
-            # Return an empty dataframe with expected columns if no data is found
-            return pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Volume'])
-        
-        # Ensure column names are lowercase for consistency
-        data.columns = [col.lower() for col in data.columns]
-        return data.reset_index()
+    max_retries = 3
+    retry_delay = 2  # seconds
 
-    except Exception as e:
-        logging.error(f"Error fetching daily stock data for {symbol}: {e}")
-        return pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Volume'])
+    for attempt in range(max_retries):
+        try:
+            end_date_adjusted = (pd.to_datetime(end_date) + pd.DateOffset(days=1)).strftime('%Y-%m-%d')
+            data = yf.download(
+                symbol,
+                start=start_date,
+                end=end_date_adjusted,
+                progress=False,
+                auto_adjust=True,
+            )
+            
+            if not data.empty:
+                data.columns = [col.lower() for col in data.columns]
+                return data.reset_index()
+            
+            # If data is empty, log it and retry
+            logging.warning(f"yfinance returned empty dataframe for {symbol} on attempt {attempt + 1}. Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+
+        except Exception as e:
+            logging.error(f"Exception on attempt {attempt + 1} for {symbol}: {e}. Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+
+    # If all retries fail, return a specific error message string
+    error_message = f"ERROR: Failed to retrieve historical stock data for {symbol} after {max_retries} attempts. The yfinance API might be unavailable or blocking requests."
+    logging.error(error_message)
+    return error_message
 
 # --- Deprecated or unused functions from the original file are removed for clarity ---
 # --- The following are existing functions that are kept ---

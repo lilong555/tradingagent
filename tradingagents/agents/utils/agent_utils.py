@@ -1,6 +1,5 @@
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
-from typing import List, Any
-from typing import Annotated
+from typing import List, Any, Annotated
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import RemoveMessage
 from langchain_core.tools import tool
